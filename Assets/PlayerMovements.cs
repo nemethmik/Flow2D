@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.SceneManagement;
 public class PlayerMovements : MonoBehaviour {
 	const string RunningParam = "Running";
 	Rigidbody2D myRigidBody; // This is only for performance optimization
@@ -9,7 +9,8 @@ public class PlayerMovements : MonoBehaviour {
 	[SerializeField] float jumpForce = 7;
 	public float runSpeed = 7;
 	public LayerMask terrain = 6;
-	enum Animations { Idle, Running, Jumping, Falling}
+	enum Animations { Idle, Running, Jumping, Falling, Disappear}
+	private Animations myAnimation = Animations.Idle;
 	// Start is called before the first frame update
 	private void Start() {
 		UnityEngine.Debug.Log($"Hello from Unity Terrain LayerMask is {(int)terrain}");
@@ -26,16 +27,18 @@ public class PlayerMovements : MonoBehaviour {
 		//float x = Input.GetAxis("Horizontal");
 		//myRigidBody.velocity = new Vector2 (x * 7.0f, myRigidBody.velocity.y);
 		//if (UnityEngine.Input.GetKeyDown(KeyCode.Space)) {
-		var a = ChangeAnimation();
-		//if (a == Animations.Idle || a == Animations.Running) { // We are not mid-air
+		if (myAnimation != Animations.Disappear) {
+			myAnimation = ChangeAnimation();
+			//if (a == Animations.Idle || a == Animations.Running) { // We are not mid-air
 			//float x = Input.GetAxis("Horizontal");
 			float x = Input.GetAxisRaw("Horizontal"); // if x == 0, the player doesn't move
 			myRigidBody.velocity = new Vector2(x * runSpeed, myRigidBody.velocity.y);
-		//}
-		if (UnityEngine.Input.GetButtonDown("Jump") && !isMidAir()) {
-			//myRigidBody.velocity = new Vector3(0,7,0);
-			myRigidBody.velocity = new Vector2(myRigidBody.velocity.x, jumpForce);
-			Debug.Log($"Jump up at {refreshRateCounter}");
+			//}
+			if (UnityEngine.Input.GetButtonDown("Jump") && !isMidAir()) {
+				//myRigidBody.velocity = new Vector3(0,7,0);
+				myRigidBody.velocity = new Vector2(myRigidBody.velocity.x, jumpForce);
+				Debug.Log($"Jump up at {refreshRateCounter}");
+			}
 		}
 	}
 	private Animations ChangeAnimation() {
@@ -66,5 +69,20 @@ public class PlayerMovements : MonoBehaviour {
 		BoxCollider2D boxCollider = GetComponent<BoxCollider2D>();
 		return !Physics2D.BoxCast(boxCollider.bounds.center, 
 			boxCollider.bounds.size, 0, Vector2.down, 0.1f, terrain); //terrain
+	}
+	private void OnCollisionEnter2D(Collision2D collision) {
+		if (collision.gameObject.CompareTag("Spikes")) {
+			Disappear();
+		}
+	}
+	private void Disappear() {
+		myAnimation = Animations.Disappear;
+		Debug.Log($"Disappear {(int)myAnimation}");
+		myAnimator.SetTrigger("Disappear");
+		myAnimator.SetInteger("ActiveAnimation", (int)myAnimation);
+		myRigidBody.bodyType = RigidbodyType2D.Static; // You cannot move the player any more
+	}
+	void RestartScene() {
+		SceneManager.LoadScene(SceneManager.GetActiveScene().name);
 	}
 }
